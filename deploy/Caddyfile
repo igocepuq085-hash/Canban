@@ -2,3 +2,7 @@
 	encode zstd gzip
 	reverse_proxy app:3000
 }
+
+http://{$APP_IP} {
+	redir https://{$APP_SITE}{uri} permanent
+}

@@ -29,6 +29,7 @@ services:
     restart: unless-stopped
     environment:
       APP_SITE: ${APP_SITE:?APP_SITE is required}
+      APP_IP: ${APP_IP:?APP_IP is required}
     ports:
       - "80:80"
       - "443:443"
