@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --experimental-strip-types --test --test-isolation=none src/lib/progress.test.ts src/lib/risk.test.ts src/lib/ai-analysis.test.ts src/lib/task-import.test.ts src/lib/transition.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/progress.test.ts src/lib/risk.test.ts src/lib/ai-analysis.test.ts src/lib/task-import.test.ts src/lib/transition.test.ts",
     "db:push": "prisma db push",
     "db:init": "node scripts/init-db.mjs",
     "db:seed": "tsx prisma/seed.ts"
