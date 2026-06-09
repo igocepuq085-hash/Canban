@@ -15,6 +15,7 @@ import { validateExecutorTransition, validateReviewReturn } from "@/lib/transiti
 
 const text = (formData: FormData, key: string) => String(formData.get(key) ?? "").trim();
 const optionalDate = (value: string) => (value ? new Date(`${value}T12:00:00`) : null);
+export type AuthActionState = { error?: string };
 
 async function refreshCardAnalysis(cardId: string) {
   const card = await prisma.card.findUnique({
@@ -67,14 +68,22 @@ async function refreshCardAnalysis(cardId: string) {
   ]);
 }
 
-export async function registerAction(formData: FormData) {
+export async function registerAction(_previousState: AuthActionState, formData: FormData): Promise<AuthActionState> {
   const name = text(formData, "name");
   const email = text(formData, "email").toLowerCase();
   const password = text(formData, "password");
-  if (name.length < 2 || !email.includes("@") || password.length < 8) throw new Error("Проверьте данные регистрации");
-  if (await prisma.user.findUnique({ where: { email } })) throw new Error("Электронная почта уже зарегистрирована");
-  const user = await prisma.user.create({ data: { name, email, passwordHash: await hashPassword(password) } });
-  await createSession(user.id);
+  if (name.length < 2 || !email.includes("@") || password.length < 8) {
+    return { error: "Проверьте имя, email и пароль длиной от 8 символов." };
+  }
+  try {
+    if (await prisma.user.findUnique({ where: { email } })) {
+      return { error: "Электронная почта уже зарегистрирована." };
+    }
+    const user = await prisma.user.create({ data: { name, email, passwordHash: await hashPassword(password) } });
+    await createSession(user.id);
+  } catch {
+    return { error: "Не удалось создать учётную запись. Попробуйте ещё раз." };
+  }
   redirect("/app");
 }
 

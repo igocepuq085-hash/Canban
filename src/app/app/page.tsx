@@ -15,7 +15,7 @@ export default async function AppPage() {
   const managedWorkspaceIds = memberships
     .filter(({ role }) => role !== "EXECUTOR")
     .map(({ workspaceId }) => workspaceId);
-  const canManageSpaces = managedWorkspaceIds.length > 0;
+  const canManageSpaces = memberships.length === 0 || managedWorkspaceIds.length > 0;
   const cards = await prisma.card.findMany({
     where: {
       OR: [
