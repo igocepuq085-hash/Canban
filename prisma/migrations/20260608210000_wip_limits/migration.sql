@@ -1,0 +1,1 @@
+ALTER TABLE "BoardColumn" ADD COLUMN "wipLimit" INTEGER;

@@ -1,0 +1,95 @@
+CREATE TABLE IF NOT EXISTS "User" (
+  "id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL, "email" TEXT NOT NULL,
+  "passwordHash" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" DATETIME NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
+
+CREATE TABLE IF NOT EXISTS "Workspace" (
+  "id" TEXT NOT NULL PRIMARY KEY, "name" TEXT NOT NULL, "description" TEXT,
+  "ownerId" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" DATETIME NOT NULL,
+  CONSTRAINT "Workspace_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS "WorkspaceMember" (
+  "id" TEXT NOT NULL PRIMARY KEY, "workspaceId" TEXT NOT NULL, "userId" TEXT NOT NULL,
+  "role" TEXT NOT NULL DEFAULT 'MEMBER', "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "WorkspaceMember_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "Workspace" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "WorkspaceMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "WorkspaceMember_workspaceId_userId_key" ON "WorkspaceMember"("workspaceId", "userId");
+
+CREATE TABLE IF NOT EXISTS "Board" (
+  "id" TEXT NOT NULL PRIMARY KEY, "workspaceId" TEXT NOT NULL, "name" TEXT NOT NULL,
+  "description" TEXT, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL,
+  CONSTRAINT "Board_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "Workspace" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS "BoardColumn" (
+  "id" TEXT NOT NULL PRIMARY KEY, "boardId" TEXT NOT NULL, "name" TEXT NOT NULL, "position" INTEGER NOT NULL,
+  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL,
+  CONSTRAINT "BoardColumn_boardId_fkey" FOREIGN KEY ("boardId") REFERENCES "Board" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "BoardColumn_boardId_position_key" ON "BoardColumn"("boardId", "position");
+
+CREATE TABLE IF NOT EXISTS "Card" (
+  "id" TEXT NOT NULL PRIMARY KEY, "boardId" TEXT NOT NULL, "columnId" TEXT NOT NULL, "title" TEXT NOT NULL,
+  "description" TEXT, "creatorId" TEXT NOT NULL, "assigneeId" TEXT, "priority" TEXT NOT NULL DEFAULT 'MEDIUM',
+  "dueDate" DATETIME, "plannedStartDate" DATETIME, "plannedEndDate" DATETIME, "actualStartDate" DATETIME,
+  "actualEndDate" DATETIME, "manualProgress" INTEGER NOT NULL DEFAULT 0, "riskLevel" TEXT NOT NULL DEFAULT 'NORMAL',
+  "riskScore" INTEGER NOT NULL DEFAULT 0, "stuckFlag" BOOLEAN NOT NULL DEFAULT false, "stuckReason" TEXT,
+  "forecastEndDate" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL,
+  CONSTRAINT "Card_boardId_fkey" FOREIGN KEY ("boardId") REFERENCES "Board" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "Card_columnId_fkey" FOREIGN KEY ("columnId") REFERENCES "BoardColumn" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT "Card_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT "Card_assigneeId_fkey" FOREIGN KEY ("assigneeId") REFERENCES "User" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS "TaskStage" (
+  "id" TEXT NOT NULL PRIMARY KEY, "cardId" TEXT NOT NULL, "name" TEXT NOT NULL, "description" TEXT, "position" INTEGER NOT NULL,
+  "plannedStartDate" DATETIME, "plannedEndDate" DATETIME, "actualStartDate" DATETIME, "actualEndDate" DATETIME,
+  "plannedWeight" INTEGER NOT NULL DEFAULT 1, "actualProgress" INTEGER NOT NULL DEFAULT 0,
+  "status" TEXT NOT NULL DEFAULT 'NOT_STARTED', "isBlocking" BOOLEAN NOT NULL DEFAULT false,
+  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL,
+  CONSTRAINT "TaskStage_cardId_fkey" FOREIGN KEY ("cardId") REFERENCES "Card" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "TaskStage_cardId_position_key" ON "TaskStage"("cardId", "position");
+
+CREATE TABLE IF NOT EXISTS "ProgressSnapshot" (
+  "id" TEXT NOT NULL PRIMARY KEY, "cardId" TEXT NOT NULL, "snapshotDate" DATETIME NOT NULL,
+  "plannedPercent" INTEGER NOT NULL, "actualPercent" INTEGER NOT NULL, "source" TEXT NOT NULL, "comment" TEXT,
+  "createdById" TEXT NOT NULL, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "ProgressSnapshot_cardId_fkey" FOREIGN KEY ("cardId") REFERENCES "Card" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "ProgressSnapshot_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS "CardComment" (
+  "id" TEXT NOT NULL PRIMARY KEY, "cardId" TEXT NOT NULL, "userId" TEXT NOT NULL, "body" TEXT NOT NULL,
+  "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "updatedAt" DATETIME NOT NULL,
+  CONSTRAINT "CardComment_cardId_fkey" FOREIGN KEY ("cardId") REFERENCES "Card" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "CardComment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS "CardActivityLog" (
+  "id" TEXT NOT NULL PRIMARY KEY, "cardId" TEXT NOT NULL, "userId" TEXT NOT NULL, "action" TEXT NOT NULL,
+  "oldValue" TEXT, "newValue" TEXT, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "CardActivityLog_cardId_fkey" FOREIGN KEY ("cardId") REFERENCES "Card" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "CardActivityLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS "TaskAiInsight" (
+  "id" TEXT NOT NULL PRIMARY KEY, "cardId" TEXT NOT NULL, "analysisDate" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "riskLevel" TEXT NOT NULL, "delayPercent" INTEGER NOT NULL, "delayDays" INTEGER NOT NULL, "stuckStageId" TEXT,
+  "summary" TEXT NOT NULL, "issuesJson" TEXT NOT NULL, "recommendationsJson" TEXT NOT NULL,
+  "predictedCompletionDate" DATETIME, "confidence" REAL NOT NULL DEFAULT 0.75, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "TaskAiInsight_cardId_fkey" FOREIGN KEY ("cardId") REFERENCES "Card" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT "TaskAiInsight_stuckStageId_fkey" FOREIGN KEY ("stuckStageId") REFERENCES "TaskStage" ("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS "Invitation" (
+  "id" TEXT NOT NULL PRIMARY KEY, "workspaceId" TEXT NOT NULL, "email" TEXT NOT NULL, "role" TEXT NOT NULL DEFAULT 'MEMBER',
+  "token" TEXT NOT NULL, "expiresAt" DATETIME NOT NULL, "acceptedAt" DATETIME, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "Invitation_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES "Workspace" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "Invitation_token_key" ON "Invitation"("token");
