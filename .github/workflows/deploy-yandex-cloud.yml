@@ -87,18 +87,18 @@ jobs:
 
       - name: Deploy release
         env:
-          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+          APP_SITE: ${{ secrets.APP_SITE }}
           DEPLOY_HOST: ${{ secrets.YC_VM_HOST }}
           DEPLOY_USER: ${{ secrets.YC_VM_USER }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE: ${{ steps.metadata.outputs.tags }}
           SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
         run: |
-          printf 'IMAGE=%s\nAPP_DOMAIN=%s\nSESSION_SECRET=%s\n' "$IMAGE" "$APP_DOMAIN" "$SESSION_SECRET" \
+          printf 'IMAGE=%s\nAPP_SITE=%s\nSESSION_SECRET=%s\n' "$IMAGE" "$APP_SITE" "$SESSION_SECRET" \
             | ssh "$DEPLOY_USER@$DEPLOY_HOST" "umask 077; cat > ~/taskflow/.env"
           printf '%s' "$GHCR_TOKEN" \
             | ssh "$DEPLOY_USER@$DEPLOY_HOST" "docker login ghcr.io --username '${{ github.repository_owner }}' --password-stdin"
           ssh "$DEPLOY_USER@$DEPLOY_HOST" \
             "cd ~/taskflow && docker compose --env-file .env -f docker-compose.prod.yml pull && docker compose --env-file .env -f docker-compose.prod.yml up -d --remove-orphans"
           sleep 15
-          curl --fail --silent --show-error --retry 12 --retry-delay 10 "https://$APP_DOMAIN/api/health"
+          curl --fail --silent --show-error --retry 12 --retry-delay 10 "$APP_SITE/api/health"

@@ -9,3 +9,4 @@ coverage
 .dev-server.log
 .dev-server-error.log
 *.tsbuildinfo
+.tools/
